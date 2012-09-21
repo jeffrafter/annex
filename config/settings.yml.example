@@ -1,0 +1,61 @@
+repository: YOUR_PRIVATE_REPO
+users:
+  bootstrap: ubuntu
+  update: youruser
+amazon:
+  access_key_id: AMAZON_KEY_HERE
+  secret_access_key: AMAZON_SECRET_HERE
+  images:
+    ebs:
+      image_id: ami-63be790a
+      flavor_id: m2.2xlarge
+    ec2:
+      image_id: ami-35de095c
+      flavor_id: m1.large
+    ec2_small_32:
+      image_id: ami-81b275e8
+      flavor_id: m1.small
+    ebs_micro:
+      image_id: ami-71dc0b18
+      flavor_id: t1.micro
+    windows:
+      image_id: ami-92ba43fb
+      flavor_id: m1.small
+roles:
+  web:
+    image: ec2
+    count: 2
+  app:
+    image: ec2
+    count: 1
+  utility:
+    image: ec2
+    count: 1
+  redis:
+    image: ec2
+    count: 1
+  "redis-slave":
+    image: ec2
+    count: 1
+  ci:
+    ruby: package
+    image: ec2_small_32
+    count: 1
+  qa:
+    image: ec2
+    count: 1
+  dns:
+    ruby: package
+    image: ebs_micro
+    count: 1
+  windows:
+    image: windows
+    count: 1
+  staging:
+    image: ec2
+    count: 1
+  monitoring:
+    ruby: package
+    image: ec2_small_32
+    count: 1
+

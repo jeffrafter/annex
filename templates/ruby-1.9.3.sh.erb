@@ -1,0 +1,5 @@
+wget http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p0.tar.gz
+tar -xzf ruby-1.9.3-p0.tar.gz 2>&1
+cd ruby-1.9.3-p0 && ./configure --prefix=/usr/local 2>&1 \
+&& make 2>&1 \
+&& sudo make install 2>&1

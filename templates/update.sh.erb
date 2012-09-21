@@ -1,0 +1,9 @@
+sudo chown -R <%= @env.config['users']['update'] %>:<%= @env.config['users']['update'] %> /var/chef-solo
+sudo chown -R <%= @env.config['users']['update'] %>:<%= @env.config['users']['update'] %> /etc/chef
+cd /var/chef-solo/cookbooks && git pull origin master
+
+cp /var/chef-solo/cookbooks/solo.rb /etc/chef
+echo 'node_name "<%= node_name %>"' >> /etc/chef/solo.rb
+echo '{ "run_list": ["role[<%= role %>]"]}' > /etc/chef/dna.json
+
+sudo chef-solo -c /etc/chef/solo.rb -j /etc/chef/dna.json

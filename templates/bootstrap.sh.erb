@@ -1,0 +1,22 @@
+sudo apt-get update
+sudo apt-get -y install ssh git-core wget curl build-essential clang bison openssl zlib1g libxslt1.1 libssl-dev libxslt1-dev libxml2 libffi-dev libyaml-dev libxslt-dev autoconf libc6-dev libreadline6-dev zlib1g-dev libcurl4-openssl-dev
+
+<%= ruby_script %>
+sudo gem install rake --no-ri --no-rdoc
+sudo gem install slimgems --no-ri --no-rdoc
+sudo gem install chef ohai --no-ri --no-rdoc
+
+sudo mkdir -p /var/chef-solo
+sudo chown <%= @env.config['users']['bootstrap'] %> /var/chef-solo
+
+echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" >> ~/.ssh/known_hosts
+
+git clone <%= @env.config['repository'] %> /var/chef-solo/cookbooks
+
+sudo mkdir -p /etc/chef
+sudo chown <%= @env.config['users']['bootstrap'] %> /etc/chef
+cp /var/chef-solo/cookbooks/solo.rb /etc/chef
+echo 'node_name "<%= node_name %>"' >> /etc/chef/solo.rb
+echo '{ "run_list": ["role[<%= role %>]"]}' > /etc/chef/dna.json
+
+sudo chef-solo -c /etc/chef/solo.rb -j /etc/chef/dna.json

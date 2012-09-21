@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+# Trap interrupts to quit cleanly.
+Signal.trap("INT") { exit 1 }
+
+require 'annex'
+require 'annex/cli'
+
+# Stdout/stderr should not buffer output
+$stdout.sync = true
+$stderr.sync = true
+
+# Initialization options
+opts = {}
+
+# Are we running on Windows?
+opts[:windows] = RbConfig::CONFIG["host_os"].downcase =~ /(mingw|mswin)/
+
+# Disable color if the proper argument was passed or if we're
+# on Windows since the default Windows terminal doesn't support
+# colors.
+opts[:support_colors] = opts[:windows] && ENV.has_key?("ANSICON")
+opts[:no_colors] = ARGV.include?("--no-color") || !$stdout.tty? || !opts[:supports_colors]
+ARGV.delete("--no-color")
+
+env = nil
+begin
+  # Create the environment, which is the cwd of wherever the
+  # `annex` command was invoked from
+  env = Annex::Environment.new(opts)
+
+  # Execute the CLI interface, and exit with the proper error code
+  exit(env.cli(ARGV))
+
+rescue Annex::Errors::AnnexError => e
+  if env
+    env.ui.error e.message, {:prefix => false} if e.message
+  else
+    $stderr.puts "Annex failed to initialize at a very early stage:\n\n"
+    $stderr.puts e.message
+  end
+
+  exit e.status_code if e.respond_to?(:status_code)
+
+  # An error occurred with no status code defined
+  exit 999
+end
