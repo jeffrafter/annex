@@ -1,0 +1,40 @@
+== Annex
+
+Annex leverages chef-solo to allow you to provision and update multiple
+servers by looking up network topology on the fly utilizing a distributed
+repository to manage recipes.
+
+== Getting started
+
+The `annex` command allows you to provision a server (bootstrapping or
+updating as needed) or list the servers that you have already provisioned.
+
+    Usage: annex [-v] [-h] command [<args>]
+
+    Available commands:
+
+        provision
+        list
+
+    Global options:
+
+        -h, --help                       Show this message
+        -v, --version                    Show version
+
+In order for this to work, your recipes have to be setup and your
+config/settings.yml needs to be setup.
+
+== Testing
+
+Nope.
+
+== Contributors
+
+* Jeff Rafter
+* Your name here
+
+== Acknowledgements
+
+Thanks to Mitchell Hashimoto ({@mitchellh}[link:https://twitter.com/#!/mitchellh]) and
+Nick Plante ({@zapnap}[link:https://twitter.com/#!/zapnap]).
+
