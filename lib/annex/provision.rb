@@ -18,6 +18,9 @@ module Annex
       count = @env.config['roles'][role]['count']
       @env.info("We should have #{count}", :info)
 
+      # Try to be graceful
+      Thread.abort_on_exception = false
+
       # For each server we do have, update
       which.each do |server|
         update(server, @env.config['users']['update'])
@@ -58,65 +61,76 @@ module Annex
     end
 
     def bootstrap(connection, image_id, flavor_id, user)
-      @env.info("Bootstrapping #{role} server", :info)
+      thr = Thread.new do
+        @env.info("Bootstrapping #{role} server", :info)
 
-      server = connection.servers.bootstrap({
-        :private_key_path => '~/.ssh/id_rsa',
-        :public_key_path => '~/.ssh/id_rsa.pub',
-        :availability_zone => 'us-east-1a',
-        :username => user,
-        :image_id => image_id,
-        :flavor_id => flavor_id
-      })
+        # Build the server from the base AMI
+        server = connection.servers.bootstrap({
+          :private_key_path => '~/.ssh/id_rsa',
+          :public_key_path => '~/.ssh/id_rsa.pub',
+          :availability_zone => 'us-east-1a',
+          :username => user,
+          :image_id => image_id,
+          :flavor_id => flavor_id
+        })
 
-      # Add the tags
-      connection.tags.create(
-        :resource_id => server.identity,
-        :key => 'Name',
-        :value => node_name)
+        # Pass off control to other threads just in case
+        Thread.pass
 
-      ssh_options = { :forward_agent => true }
-      ssh = Fog::SSH.new(server.public_ip_address, server.username, ssh_options)
+        # Add the tags
+        connection.tags.create(
+          :resource_id => server.identity,
+          :key => 'Name',
+          :value => node_name)
 
-      begin
-        return if image_id == "windows"
-        bootstrap_script.split(/\n/).each do |cmd|
-          next if cmd == ''
+        ssh_options = { :forward_agent => true }
+        ssh = Fog::SSH.new(server.public_ip_address, server.username, ssh_options)
+
+        begin
+          return if image_id == "windows"
+          bootstrap_script.split(/\n/).each do |cmd|
+            next if cmd == ''
+            @env.info("")
+            @env.info("Running command:", :info)
+            @env.info("")
+            @env.info("  #{cmd}", :command)
+            ssh.run(cmd)
+          end
+        ensure
           @env.info("")
-          @env.info("Running command:", :info)
-          @env.info("")
-          @env.info("  #{cmd}", :command)
-          ssh.run(cmd)
+          @env.info("Done", :info)
+          @env.info("  #{server.dns_name}", :notice)
+          @env.info("  Public: #{server.public_ip_address}", :notice)
+          @env.info("  Private: #{server.private_ip_address}", :notice)
         end
-      ensure
-        @env.info("")
-        @env.info("Done", :info)
-        @env.info("  #{server.dns_name}", :notice)
-        @env.info("  Public: #{server.public_ip_address}", :notice)
-        @env.info("  Private: #{server.private_ip_address}", :notice)
       end
+      # We want to make sure we wait for this thing to finish
+      thr.join
     end
 
     def update(server, user)
-      @env.info("Updating #{server.public_ip_address} (#{server.id})", :info)
-      ssh_options = { :forward_agent => true }
-      ssh = Fog::SSH.new(server.public_ip_address, user, ssh_options)
-      begin
-        update_script.split(/\n/).each do |cmd|
-          next if cmd == ''
+      thr = Thread.new do
+        @env.info("Updating #{server.public_ip_address} (#{server.id})", :info)
+        ssh_options = { :forward_agent => true }
+        ssh = Fog::SSH.new(server.public_ip_address, user, ssh_options)
+        begin
+          update_script.split(/\n/).each do |cmd|
+            next if cmd == ''
+            @env.info("")
+            @env.info("Running command:", :info)
+            @env.info("")
+            @env.info("  #{cmd}", :command)
+            ssh.run(cmd)
+          end
+        ensure
           @env.info("")
-          @env.info("Running command:", :info)
-          @env.info("")
-          @env.info("  #{cmd}", :command)
-          ssh.run(cmd)
+          @env.info("Done", :info)
+          @env.info("  #{server.dns_name}", :notice)
+          @env.info("  Public: #{server.public_ip_address}", :notice)
+          @env.info("  Private: #{server.private_ip_address}", :notice)
         end
-      ensure
-        @env.info("")
-        @env.info("Done", :info)
-        @env.info("  #{server.dns_name}", :notice)
-        @env.info("  Public: #{server.public_ip_address}", :notice)
-        @env.info("  Private: #{server.private_ip_address}", :notice)
       end
+      thr.join
     end
   end
 end
