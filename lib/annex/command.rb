@@ -16,15 +16,16 @@ module Annex
 
     protected
 
-    def template(name)
+    def template(name, template_binding=nil)
       content = File.read(File.join(File.expand_path(File.dirname(__FILE__)),"..","..","templates","#{name}.erb")) rescue nil
       erb = ERB.new(content)
-      erb.result(binding)
+      erb.result(template_binding || binding)
     end
 
     def connection
       @connection = Fog::Compute.new({
         :provider => 'AWS',
+        :region => @env.config['amazon']['region'] || 'us-east-1',
         :aws_access_key_id => @env.config['amazon']['access_key_id'],
         :aws_secret_access_key => @env.config['amazon']['secret_access_key']
       })

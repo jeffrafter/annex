@@ -2,9 +2,12 @@ module Annex
   class List < Command
     def execute
       which = servers.select do |server|
+        name_tag = server.tags["Name"]
+        name_tag = name_tag.gsub(/-i-[0-9a-f]+$/, '') rescue ''
+
         choose = server.state == "running"
-        choose = choose && server.tags["Name"] =~ /^#{role}/ if role
-        choose = choose && server.tags["Name"] =~ /#{environment}-\d+$/ if environment
+        choose = choose && name_tag =~ /^#{role}/ if role
+        choose = choose && name_tag =~ /#{environment}$/ if environment
         choose
       end
 

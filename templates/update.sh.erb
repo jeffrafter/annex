@@ -1,6 +1,7 @@
-sudo chown -R <%= @env.config['users']['update'] %>:<%= @env.config['users']['update'] %> /var/chef-solo
-sudo chown -R <%= @env.config['users']['update'] %>:<%= @env.config['users']['update'] %> /etc/chef
+sudo chown -R <%= user %>:<%= user %> /var/chef-solo
+sudo chown -R <%= user %>:<%= user %> /etc/chef
 cd /var/chef-solo/cookbooks && git pull origin master
+cp <%= environment %>.json /var/chef-solo/cookbooks/data_bags/environments
 
 cp /var/chef-solo/cookbooks/solo.rb /etc/chef
 echo 'node_name "<%= node_name %>"' >> /etc/chef/solo.rb
