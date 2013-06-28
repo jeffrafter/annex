@@ -34,18 +34,24 @@ module Annex
 
         # Try to be graceful
         Thread.abort_on_exception = false
+        threads = []
 
         # For each server we do have, update
         which.each do |server|
-          update(server, @env.config['users']['update']) unless ENV['SKIP_UPDATE']
+          threads << update(server, @env.config['users']['update']) unless ENV['SKIP_UPDATE']
         end
 
         # For each server we need, bootstrap
         (count - which.length).times do
           image = @env.config['roles'][role]['image']
           kind = @env.config['amazon']['images'][image]
-          bootstrap(connection, kind['image_id'], kind['flavor_id'], kind['az_id'], @env.config['users']['bootstrap'])
+          threads << bootstrap(connection, kind['image_id'], kind['flavor_id'], kind['az_id'], @env.config['users']['bootstrap'])
         end
+
+        threads.each do |thr|
+          thr.join unless ENV['SYNC']
+        end
+
       ensure
         cleanup_environment
       end
@@ -77,28 +83,32 @@ module Annex
 
     def bootstrap(connection, image_id, flavor_id, az_id, user)
       thr = Thread.new(connection, image_id, flavor_id, az_id, user) do |_connection, _image_id, _flavor_id, _az_id, _user|
+        sleep 1
+
         @env.info("Bootstrapping #{role} server...", :info)
 
-        # Build the server from the base AMI
-        server = _connection.servers.bootstrap({
-          :private_key_path => '~/.ssh/id_rsa',
-          :public_key_path => '~/.ssh/id_rsa.pub',
-          :availability_zone => _az_id,
-          :username => _user,
-          :image_id => _image_id,
-          :flavor_id => _flavor_id
-        })
+        begin
+          # Build the server from the base AMI
+          server = _connection.servers.bootstrap({
+            :private_key_path => '~/.ssh/id_rsa',
+            :public_key_path => '~/.ssh/id_rsa.pub',
+            :availability_zone => _az_id,
+            :username => _user,
+            :image_id => _image_id,
+            :flavor_id => _flavor_id
+          })
 
-        # Pass off control to other threads just in case
-        Thread.pass
+          node_name = "#{role}-#{environment}-#{server.identity}"
 
-        node_name = "#{role}-#{environment}-#{server.identity}"
-
-        # Add the tags
-        _connection.tags.create(
-          :resource_id => server.identity,
-          :key => 'Name',
-          :value => node_name)
+          # Add the tags
+          _connection.tags.create(
+            :resource_id => server.identity,
+            :key => 'Name',
+            :value => node_name)
+        rescue Exception => e
+          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+          return
+        end
 
         scp_options = { :forward_agent => true }
         scp = Fog::SCP.new(server.public_ip_address, server.username, scp_options)
@@ -125,20 +135,28 @@ module Annex
             @env.info("  #{cmd}", :command)
             ssh.run(cmd)
           end
-        ensure
+        rescue Exception => e
+          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+        end
+
+        begin
           @env.info("")
           @env.info("Done", :info)
           @env.info("  #{server.dns_name}", :notice)
           @env.info("  Public: #{server.public_ip_address}", :notice)
           @env.info("  Private: #{server.private_ip_address}", :notice)
+        rescue
         end
       end
-      thr.join
+      thr.join if ENV['SYNC']
+      thr
     end
 
     def update(server, user)
       thr = Thread.new(server, user) do |_server, _user|
-        @env.info("Updating #{_server.public_ip_address} (#{_server.id})", :info)
+        sleep 1
+
+        @env.info("Updating #{_server.public_ip_address} (#{_server.id})\n", :info)
 
         scp_options = { :forward_agent => true }
         scp = Fog::SCP.new(_server.public_ip_address, _user, scp_options)
@@ -164,15 +182,21 @@ module Annex
             @env.info("  #{cmd}", :command)
             ssh.run(cmd)
           end
-        ensure
+        rescue Exception => e
+          @env.error("Error for #{_server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+        end
+
+        begin
           @env.info("")
           @env.info("Done", :info)
           @env.info("  #{_server.dns_name}", :notice)
           @env.info("  Public: #{_server.public_ip_address}", :notice)
           @env.info("  Private: #{_server.private_ip_address}", :notice)
+        rescue
         end
       end
-      thr.join
+      thr.join if ENV['SYNC']
+      thr
     end
 
     def write_environment
