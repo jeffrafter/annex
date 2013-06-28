@@ -203,6 +203,8 @@ module Annex
       @nodes = []
       servers.each do |server|
         name = server.tags["Name"]
+        name = name.gsub(/-i-[0-9a-f]+$/, '') rescue ''
+
         next unless server.state == "running"
         next unless name && name != ''
 
