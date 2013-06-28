@@ -202,15 +202,16 @@ module Annex
     def write_environment
       @nodes = []
       servers.each do |server|
+        name = server.tags["Name"]
         next unless server.state == "running"
-        next unless server.tags["Name"] && server.tags["Name"] != ''
+        next unless name && name != ''
 
-        role = server.tags["Name"].gsub(/-.*/, '')
-        env = server.tags["Name"].gsub(/^[^-]+-/, '').gsub(/-.*/, '')
+        role = name.slice(0, name.rindex("-")) rescue name
+        env = name.slice(name.rindex("-")+1, name.length) rescue name
         next unless env == environment
 
         @nodes << {
-          :name => server.tags["Name"],
+          :name => name,
           :role => role,
           :environment => env,
           :public_fqdn => server.dns_name,
