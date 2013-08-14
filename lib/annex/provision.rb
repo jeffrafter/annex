@@ -6,7 +6,7 @@ module Annex
   class Provision < Command
     def execute
       if !role && !environment
-        @env.info("Sorry, you must include the role and the environment when provisioning", :error)
+        @env.info("Sorry, you must include the role and the environment when provisioning")
         return
       end
 
@@ -106,7 +106,7 @@ module Annex
             :key => 'Name',
             :value => node_name)
         rescue Exception => e
-          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}")
           return
         end
 
@@ -136,7 +136,7 @@ module Annex
             ssh.run(cmd)
           end
         rescue Exception => e
-          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+          @env.error("Error for #{server.id} (#{e.message})\n\n#{e.backtrace}")
         end
 
         begin
@@ -183,7 +183,7 @@ module Annex
             ssh.run(cmd)
           end
         rescue Exception => e
-          @env.error("Error for #{_server.id} (#{e.message})\n\n#{e.backtrace}", :error)
+          @env.error("Error for #{_server.id} (#{e.message})\n\n#{e.backtrace}")
         end
 
         begin
@@ -213,7 +213,7 @@ module Annex
         next unless env == environment
 
         @nodes << {
-          :name => name,
+          :name => server.tags["Name"],
           :role => role,
           :environment => env,
           :public_fqdn => server.dns_name,
